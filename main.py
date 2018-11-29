@@ -40,8 +40,6 @@ parser.add_argument('--scratch', action='store_true', default=False,
                     help='train from scratch')
 parser.add_argument('--freeze_bn', action='store_true', default=False,
                     help='freeze batch normalization parameters')
-parser.add_argument('--sync_bn', action='store_true', default=False,
-                    help='sync batch normalization across gpu')
 parser.add_argument('--beta', action='store_true', default=False,
                     help='resnet101 beta')
 parser.add_argument('--crop_size', type=int, default=513,
@@ -70,19 +68,13 @@ def main():
         pretrained=(not args.scratch),
         num_classes=len(dataset.CLASSES),
         num_groups=args.groups,
-        sync_bn=args.sync_bn,
         beta=args.beta)
   else:
     raise ValueError('Unknown backbone: {}'.format(args.backbone))
 
   if args.train:
     criterion = nn.CrossEntropyLoss(ignore_index=255)
-    if args.sync_bn:
-      from encoding.parallel import DataParallelModel, DataParallelCriterion
-      criterion = DataParallelCriterion(criterion).cuda()
-      model = DataParallelModel(model).cuda()
-    else:
-      model = nn.DataParallel(model).cuda()
+    model = nn.DataParallel(model).cuda()
     model.train()
     if args.freeze_bn:
       for m in model.modules():
@@ -90,19 +82,13 @@ def main():
           m.eval()
           m.weight.requires_grad = False
           m.bias.requires_grad = False
-    if args.backbone == 'resnet101':
-      backbone_params = (
-          list(model.module.conv1.parameters()) +
-          list(model.module.bn1.parameters()) +
-          list(model.module.layer1.parameters()) +
-          list(model.module.layer2.parameters()) +
-          list(model.module.layer3.parameters()) +
-          list(model.module.layer4.parameters()))
-    else:
-      backbone_params = (
-          list(model.module.stem0.parameters()) +
-          list(model.module.stem1.parameters()) +
-          list(model.module.cells.parameters()))
+    backbone_params = (
+        list(model.module.conv1.parameters()) +
+        list(model.module.bn1.parameters()) +
+        list(model.module.layer1.parameters()) +
+        list(model.module.layer2.parameters()) +
+        list(model.module.layer3.parameters()) +
+        list(model.module.layer4.parameters()))
     last_params = list(model.module.aspp.parameters())
     optimizer = optim.SGD([
       {'params': filter(lambda p: p.requires_grad, backbone_params)},

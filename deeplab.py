@@ -4,7 +4,7 @@ import math
 import torch.utils.model_zoo as model_zoo
 
 
-__all__ = ['ResNet', 'resnet50', 'resnet101', 'resnet152', 'pnasnet5', 'hdarts']
+__all__ = ['ResNet', 'resnet50', 'resnet101', 'resnet152']
 
 
 model_urls = {
@@ -115,13 +115,9 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes, num_groups=None, sync_bn=False, beta=False):
+    def __init__(self, block, layers, num_classes, num_groups=None, beta=False):
         self.inplanes = 64
-        if sync_bn:
-            from encoding.nn import BatchNorm2d
-        else:
-            from torch.nn import BatchNorm2d
-        self._norm = lambda planes, momentum=0.05: BatchNorm2d(planes, momentum=momentum) if num_groups is None else nn.GroupNorm(num_groups, planes)
+        self._norm = lambda planes, momentum=0.05: nn.BatchNorm2d(planes, momentum=momentum) if num_groups is None else nn.GroupNorm(num_groups, planes)
 
         super(ResNet, self).__init__()
         if not beta:
@@ -146,7 +142,7 @@ class ResNet(nn.Module):
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, BatchNorm2d) or isinstance(m, nn.GroupNorm):
+            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.GroupNorm):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
