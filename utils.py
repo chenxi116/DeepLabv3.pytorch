@@ -77,10 +77,10 @@ def preprocess(image, mask, flip=False, scale=None, crop=None):
 
   if crop:
     h, w = image.shape[1], image.shape[2]
-    pad_tb = max(0, int((1 + crop[0] - h) / 2))
-    pad_lr = max(0, int((1 + crop[1] - w) / 2))
-    image = torch.nn.ZeroPad2d((pad_lr, pad_lr, pad_tb, pad_tb))(image)
-    mask = torch.nn.ConstantPad2d((pad_lr, pad_lr, pad_tb, pad_tb), 255)(mask)
+    pad_tb = max(0, crop[0] - h)
+    pad_lr = max(0, crop[1] - w)
+    image = torch.nn.ZeroPad2d((0, pad_lr, 0, pad_tb))(image)
+    mask = torch.nn.ConstantPad2d((0, pad_lr, 0, pad_tb), 255)(mask)
 
     h, w = image.shape[1], image.shape[2]
     i = random.randint(0, h - crop[0])
