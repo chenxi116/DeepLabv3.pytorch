@@ -21,7 +21,6 @@ class ASPP(nn.Module):
         self._C = C
         self._depth = depth
         self._num_classes = num_classes
-        self._norm = norm
 
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
         self.relu = nn.ReLU(inplace=True)
@@ -36,14 +35,14 @@ class ASPP(nn.Module):
                                dilation=int(18*mult), padding=int(18*mult),
                                bias=False)
         self.aspp5 = nn.Conv2d(C, depth, kernel_size=1, stride=1, bias=False)
-        self.aspp1_bn = self._norm(depth, momentum)
-        self.aspp2_bn = self._norm(depth, momentum)
-        self.aspp3_bn = self._norm(depth, momentum)
-        self.aspp4_bn = self._norm(depth, momentum)
-        self.aspp5_bn = self._norm(depth, momentum)
+        self.aspp1_bn = norm(depth, momentum)
+        self.aspp2_bn = norm(depth, momentum)
+        self.aspp3_bn = norm(depth, momentum)
+        self.aspp4_bn = norm(depth, momentum)
+        self.aspp5_bn = norm(depth, momentum)
         self.conv2 = nn.Conv2d(depth * 5, depth, kernel_size=1, stride=1,
                                bias=False)
-        self.bn2 = self._norm(depth, momentum)
+        self.bn2 = norm(depth, momentum)
         self.conv3 = nn.Conv2d(depth, num_classes, kernel_size=1, stride=1)
 
     def forward(self, x):
@@ -117,7 +116,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes, num_groups=None, beta=False):
         self.inplanes = 64
-        self._norm = lambda planes, momentum=0.05: nn.BatchNorm2d(planes, momentum=momentum) if num_groups is None else nn.GroupNorm(num_groups, planes)
+        self.norm = lambda planes, momentum=0.05: nn.BatchNorm2d(planes, momentum=momentum) if num_groups is None else nn.GroupNorm(num_groups, planes)
 
         super(ResNet, self).__init__()
         if not beta:
@@ -128,7 +127,7 @@ class ResNet(nn.Module):
                 nn.Conv2d(3, 64, 3, stride=2, padding=1, bias=False),
                 nn.Conv2d(64, 64, 3, stride=1, padding=1, bias=False),
                 nn.Conv2d(64, 64, 3, stride=1, padding=1, bias=False))
-        self.bn1 = self._norm(64)
+        self.bn1 = self.norm(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -136,7 +135,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1,
                                        dilation=2)
-        self.aspp = ASPP(512 * block.expansion, 256, num_classes, self._norm)
+        self.aspp = ASPP(512 * block.expansion, 256, num_classes, self.norm)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -152,14 +151,14 @@ class ResNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, dilation=max(1, dilation/2), bias=False),
-                self._norm(planes * block.expansion),
+                self.norm(planes * block.expansion),
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, dilation=max(1, dilation/2), norm=self._norm))
+        layers.append(block(self.inplanes, planes, stride, downsample, dilation=max(1, dilation/2), norm=self.norm))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes, dilation=dilation, norm=self._norm))
+            layers.append(block(self.inplanes, planes, dilation=dilation, norm=self.norm))
 
         return nn.Sequential(*layers)
 
