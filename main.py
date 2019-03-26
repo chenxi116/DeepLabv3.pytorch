@@ -40,6 +40,8 @@ parser.add_argument('--scratch', action='store_true', default=False,
                     help='train from scratch')
 parser.add_argument('--freeze_bn', action='store_true', default=False,
                     help='freeze batch normalization parameters')
+parser.add_argument('--weight_std', action='store_true', default=False,
+                    help='weight standardization')
 parser.add_argument('--beta', action='store_true', default=False,
                     help='resnet101 beta')
 parser.add_argument('--crop_size', type=int, default=513,
@@ -53,6 +55,7 @@ args = parser.parse_args()
 
 def main():
   assert torch.cuda.is_available()
+  torch.backends.cudnn.benchmark = True
   model_fname = 'data/deeplab_{0}_{1}_v3_{2}_epoch%d.pth'.format(
       args.backbone, args.dataset, args.exp)
   if args.dataset == 'pascal':
@@ -68,6 +71,7 @@ def main():
         pretrained=(not args.scratch),
         num_classes=len(dataset.CLASSES),
         num_groups=args.groups,
+        weight_std=args.weight_std,
         beta=args.beta)
   else:
     raise ValueError('Unknown backbone: {}'.format(args.backbone))
